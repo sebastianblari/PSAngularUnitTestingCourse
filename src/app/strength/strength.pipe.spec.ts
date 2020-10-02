@@ -1,6 +1,6 @@
 import { StrengthPipe } from './strength.pipe';
 
-describe('StrenghtPipe, ()', () => {
+describe('StrenghtPipe', () => {
     it('should display weak if strength is less than 10', () => {
         // arrange
         let pipe: StrengthPipe = new StrengthPipe();
