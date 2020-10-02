@@ -5,6 +5,7 @@ import { By } from '@angular/platform-browser';
 import { of } from 'rxjs';
 import { Hero } from '../hero';
 import { HeroService } from '../hero.service';
+import { HeroComponent } from '../hero/hero.component';
 import { HeroesComponent } from '../heroes/heroes.component';
 
 describe('HeroesComponent - Isolated Tests', () => {
@@ -62,7 +63,7 @@ describe('HeroesComponent - Isolated Tests', () => {
     });
 });
 
-describe('HeroesComponenet - Shallow Tests', () => {
+describe('HeroesComponenet - Shallow Integration Tests', () => {
     let heroes: Hero[];
     let fixture: ComponentFixture<HeroesComponent>;
     const mockHeroService: jasmine.SpyObj<HeroService> = jasmine.createSpyObj('heroService',['getHeroes','add','delete'])
@@ -108,4 +109,43 @@ describe('HeroesComponenet - Shallow Tests', () => {
         let debugLi = fixture.debugElement.queryAll(By.css('li'));
         expect(debugLi.length).toBe(heroes.length);
     });
+});
+
+describe('HeroesComponenet - Deep Integration Tests', () => { 
+    const mockHeroService: jasmine.SpyObj<HeroService> = jasmine.createSpyObj<HeroService>('heroService',['getHeroes', 'add', 'remove']);
+    let heroes: Hero[];
+    let fixture: ComponentFixture<HeroesComponent>;
+    
+    beforeEach(() => {
+        heroes = [
+            {id: 1, name: 'SpiderDude', strength: 8},
+            {id: 2, name: 'Woderful Woman', strength: 24},
+            {id: 3, name: 'SuperDude', strength: 55}
+        ];
+
+        TestBed.configureTestingModule({
+            declarations: [
+                HeroesComponent,
+                HeroComponent
+            ],
+            providers: [
+                { provide: HeroService, useValue: mockHeroService}  
+            ],
+            schemas: [NO_ERRORS_SCHEMA],
+        });
+        fixture = TestBed.createComponent(HeroesComponent);
+    });
+
+    it('should render each hero as a HeroComponent', () => {
+        mockHeroService.getHeroes.and.returnValue(of(heroes));
+        fixture.detectChanges();
+
+        let heroComponentDEs = fixture.debugElement.queryAll(By.directive(HeroComponent));
+        for (let i = 0; i < heroComponentDEs.length; i++) {
+            expect(heroComponentDEs[i].componentInstance.hero.id).toEqual(heroes[i].id);
+            expect(heroComponentDEs[i].componentInstance.hero.name).toEqual(heroes[i].name);
+            expect(heroComponentDEs[i].componentInstance.hero.strength).toEqual(heroes[i].strength);
+        }
+
+    })
 });
