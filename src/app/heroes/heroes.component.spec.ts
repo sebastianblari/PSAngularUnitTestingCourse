@@ -2,6 +2,7 @@ import { Component, EventEmitter, Input, NO_ERRORS_SCHEMA, Output } from '@angul
 import { shouldCallLifecycleInitHook } from '@angular/core/src/view';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { By } from '@angular/platform-browser';
+import { Button } from 'protractor';
 import { of } from 'rxjs';
 import { Hero } from '../hero';
 import { HeroService } from '../hero.service';
@@ -35,7 +36,7 @@ describe('HeroesComponent - Isolated Tests', () => {
             component.heroes = heroes;
 
             // act
-            component.delete(heroToDelete);
+            component.deleteHero(heroToDelete);
 
             // assert
             expect(component.heroes).toEqual(expectedHeroes);
@@ -55,7 +56,7 @@ describe('HeroesComponent - Isolated Tests', () => {
             component.heroes = heroes;
 
             // act
-            component.delete(heroToDelete);
+            component.deleteHero(heroToDelete);
 
             // assert
             expect(mockHeroService.deleteHero).toHaveBeenCalledWith(heroToDelete);
@@ -66,7 +67,7 @@ describe('HeroesComponent - Isolated Tests', () => {
 describe('HeroesComponenet - Shallow Integration Tests', () => {
     let heroes: Hero[];
     let fixture: ComponentFixture<HeroesComponent>;
-    const mockHeroService: jasmine.SpyObj<HeroService> = jasmine.createSpyObj('heroService',['getHeroes','add','delete'])
+    const mockHeroService: jasmine.SpyObj<HeroService> = jasmine.createSpyObj('heroService',['getHeroes','addHero','delete'])
     
     @Component({
         selector: 'app-hero',
@@ -112,7 +113,7 @@ describe('HeroesComponenet - Shallow Integration Tests', () => {
 });
 
 describe('HeroesComponenet - Deep Integration Tests', () => { 
-    const mockHeroService: jasmine.SpyObj<HeroService> = jasmine.createSpyObj<HeroService>('heroService',['getHeroes', 'add', 'remove']);
+    const mockHeroService: jasmine.SpyObj<HeroService> = jasmine.createSpyObj<HeroService>('heroService',['getHeroes', 'addHero', 'remove']);
     let heroes: Hero[];
     let fixture: ComponentFixture<HeroesComponent>;
     
@@ -148,4 +149,49 @@ describe('HeroesComponenet - Deep Integration Tests', () => {
         }
 
     })
+
+    it(`should call heroService.deleteHero when the Hero Component's delete's event`, () => {
+        // arrange
+        spyOn(fixture.componentInstance, 'deleteHero'); // -> literally it's used to spy on deleteHero
+        mockHeroService.getHeroes.and.returnValue(of(heroes));
+
+        //act
+        fixture.detectChanges();
+        const heroComponents = fixture.debugElement.queryAll(By.directive(HeroComponent));
+        
+        // Grabs the child component's template and triggers the HTLM element
+        heroComponents[0].query(By.css('button')).triggerEventHandler('click', {stopPropagation: () => { }});
+        
+        // Emits using the child component's Event Emitter called delete using the component Instance 
+        (<HeroComponent>heroComponents[1].componentInstance).delete.emit(undefined);
+        
+        // Emits using the child component's Event Emitter using the debugElement
+        heroComponents[2].triggerEventHandler('delete', null);
+
+        // assert
+        expect(fixture.componentInstance.deleteHero).toHaveBeenCalledWith(heroes[0]);
+        expect(fixture.componentInstance.deleteHero).toHaveBeenCalledWith(heroes[1]);
+        expect(fixture.componentInstance.deleteHero).toHaveBeenCalledWith(heroes[2]);
+    });
+
+    it(`should add a new hero to the hero list when the add button is clicked`, () => {
+        // arrange
+        mockHeroService.getHeroes.and.returnValue(of(heroes));
+        fixture.detectChanges();
+        const name = 'Mr. Ice';
+        mockHeroService.addHero.and.returnValue({id: 5, name: name, strength: 4}); 
+        const inputElement = fixture.debugElement.query(By.css('input')).nativeElement;
+        const addButton = fixture.debugElement.query(By.css('button'));
+        fixture.detectChanges();
+
+        //act
+        inputElement.value = name;
+        addButton.triggerEventHandler('click', null);
+        fixture.detectChanges();
+        
+
+        // assert
+        const heroText = fixture.debugElement.query(By.css('ul')).nativeElement.textContent;
+        expect(heroText).toContain(inputElement.value);
+    });
 });
