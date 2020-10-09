@@ -1,4 +1,4 @@
-import { Component, EventEmitter, Input, NO_ERRORS_SCHEMA, Output } from '@angular/core';
+import { Component, DebugElement, Directive, EventEmitter, Input, NO_ERRORS_SCHEMA, Output } from '@angular/core';
 import { shouldCallLifecycleInitHook } from '@angular/core/src/view';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { By } from '@angular/platform-browser';
@@ -8,6 +8,22 @@ import { Hero } from '../hero';
 import { HeroService } from '../hero.service';
 import { HeroComponent } from '../hero/hero.component';
 import { HeroesComponent } from '../heroes/heroes.component';
+
+// -> Mocking Router    
+@Directive({
+    selector: '[routerLink]',
+    host: { '(click)': 'onClick()' } ,
+})
+
+export class RouterLinkDirectiveStub{
+    @Input('routerLink') linkParams: any;
+    navigatedTo: any = null;
+    
+    onClick() {
+        this.navigatedTo = this.linkParams;
+    }
+};
+// <-
 
 describe('HeroesComponent - Isolated Tests', () => {
     const mockHeroService: jasmine.SpyObj<HeroService> = jasmine.createSpyObj<HeroService>('heroService', ['addHero', 'deleteHero', 'getHeroes']);
@@ -113,6 +129,7 @@ describe('HeroesComponenet - Shallow Integration Tests', () => {
 });
 
 describe('HeroesComponenet - Deep Integration Tests', () => { 
+    
     const mockHeroService: jasmine.SpyObj<HeroService> = jasmine.createSpyObj<HeroService>('heroService',['getHeroes', 'addHero', 'remove']);
     let heroes: Hero[];
     let fixture: ComponentFixture<HeroesComponent>;
@@ -179,7 +196,7 @@ describe('HeroesComponenet - Deep Integration Tests', () => {
         mockHeroService.getHeroes.and.returnValue(of(heroes));
         fixture.detectChanges();
         const name = 'Mr. Ice';
-        mockHeroService.addHero.and.returnValue({id: 5, name: name, strength: 4}); 
+        mockHeroService.addHero.and.returnValue(of({id: 5, name: name, strength: 4})); 
         const inputElement = fixture.debugElement.query(By.css('input')).nativeElement;
         const addButton = fixture.debugElement.query(By.css('button'));
         fixture.detectChanges();
@@ -194,4 +211,50 @@ describe('HeroesComponenet - Deep Integration Tests', () => {
         const heroText = fixture.debugElement.query(By.css('ul')).nativeElement.textContent;
         expect(heroText).toContain(inputElement.value);
     });
+});
+    
+
+describe('HeroesComponenet - Deep Integration Tests - Mocking Router Link', () => { 
+
+    const mockHeroService: jasmine.SpyObj<HeroService> = jasmine.createSpyObj<HeroService>('heroService',['getHeroes', 'addHero', 'remove']);
+    let heroes: Hero[];
+    let fixture: ComponentFixture<HeroesComponent>;
+    
+    beforeEach(() => {
+        heroes = [
+            {id: 1, name: 'SpiderDude', strength: 8},
+            {id: 2, name: 'Woderful Woman', strength: 24},
+            {id: 3, name: 'SuperDude', strength: 55}
+        ];
+
+        TestBed.configureTestingModule({
+            declarations: [
+                HeroesComponent,
+                HeroComponent,
+                RouterLinkDirectiveStub
+            ],
+            providers: [
+                { provide: HeroService, useValue: mockHeroService}  
+            ]
+        });
+        fixture = TestBed.createComponent(HeroesComponent);
+    });
+
+    it('should have the correct route for the first hero', () => {
+        // arrange
+        mockHeroService.getHeroes.and.returnValue(of(heroes));
+        fixture.detectChanges();
+        const heroComponents: DebugElement[] = fixture.debugElement.queryAll(By.directive(HeroComponent));
+        // const routerLink: RouterLinkDirectiveStub = heroComponents[0].query(By.directive(RouterLinkDirectiveStub)).injector.get(RouterLinkDirectiveStub);
+        const routerLink: RouterLinkDirectiveStub = heroComponents[0].query(By.directive(RouterLinkDirectiveStub)).injector.get(RouterLinkDirectiveStub);
+        
+        //  act
+        heroComponents[0].query(By.css('a')).triggerEventHandler('click', null);
+        const heroId = heroComponents[0].componentInstance.hero.id;
+        // assert
+
+        expect(routerLink.navigatedTo).toBe(`/detail/${heroId}`)
+
+        
+    })
 });
