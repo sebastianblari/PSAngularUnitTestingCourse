@@ -1,4 +1,4 @@
-import { ComponentFixture, TestBed } from "@angular/core/testing"
+import { async, ComponentFixture, fakeAsync, flush, TestBed } from "@angular/core/testing"
 import { FormsModule } from "@angular/forms"
 import { ActivatedRoute } from "@angular/router"
 import { of } from "rxjs/internal/observable/of"
@@ -6,6 +6,8 @@ import { Hero } from "../hero"
 import { HeroService } from "../hero.service"
 import { HeroDetailComponent } from "./hero-detail.component"
 import { Location } from "@angular/common";
+import { timeout } from "rxjs/operators"
+import { tick } from "@angular/core/src/render3"
 
 describe('HeroDetailComponent', () => {
     // const mockActivatedRoute: jasmine.SpyObj<ActivatedRoute> = jasmine.createSpyObj('activatedRoute', ['snapshot.paramMap.get']);
@@ -47,4 +49,36 @@ describe('HeroDetailComponent', () => {
 
 
     });
+
+    it('should call updateHero when save is called', (done) => {
+        mockHeroService.updateHero.and.returnValue(of({}));
+        fixture.detectChanges();
+
+        fixture.componentInstance.save();
+
+        setTimeout(() => {
+            expect(mockHeroService.updateHero).toHaveBeenCalled();
+            done();
+        }, 300);
+    });
+
+    it('should call updateHero when save is called with fake async', fakeAsync(() => {
+        mockHeroService.updateHero.and.returnValue(of({}));
+        fixture.detectChanges();
+
+        fixture.componentInstance.save();
+        flush();
+        expect(mockHeroService.updateHero).toHaveBeenCalled();
+    }));
+
+    it('should call updateHero when save is called with async function', async(() => {
+        mockHeroService.updateHero.and.returnValue(of({}));
+        fixture.detectChanges();
+
+        fixture.componentInstance.save();
+        
+        fixture.whenStable().then(() => {
+            expect(mockHeroService.updateHero).toHaveBeenCalled();
+        });
+    }));
 });
